@@ -1,0 +1,24 @@
+DIM 2
+---
+EXTRUDE NO
+PATTERN NONE
+LAYERS 0
+DEPTH 0.0
+---
+JOINTS 3
+1   0.0     0.0
+2   1.0     0.0
+3   0.0     1.0
+---
+MEMBERS 2
+1   1   2   7e10    5e-4
+2   2   3   7e10    5e-4
+---
+CONSTRAINTS 4
+1   1   X   0.0
+2   1   Y   0.0
+3   3   X   0.0
+4   3   Y   0.0
+---
+LOADS 1
+1   2   Y   -1e3

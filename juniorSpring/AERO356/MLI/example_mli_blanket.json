@@ -1,0 +1,251 @@
+{
+  "name": "Spacecraft Bus MLI Blanket",
+  "notes": "20-layer flight blanket for a LEO spacecraft bus panel. Outer 5 layers are aluminized Kapton for durability, inner 15 are DAM for low emissivity. Dacron net spacers distributed throughout.",
+  "layers": [
+    {
+      "material": "aluminized_kapton",
+      "emissivity": 0.035,
+      "thickness_um": 25,
+      "is_spacer": false,
+      "name": "Outer shield 1 (Kapton)"
+    },
+    {
+      "material": "dacron_net",
+      "emissivity": 0.85,
+      "thickness_um": null,
+      "is_spacer": true,
+      "name": "Spacer 1"
+    },
+    {
+      "material": "aluminized_kapton",
+      "emissivity": 0.035,
+      "thickness_um": 25,
+      "is_spacer": false,
+      "name": "Outer shield 2 (Kapton)"
+    },
+    {
+      "material": "dacron_net",
+      "emissivity": 0.85,
+      "thickness_um": null,
+      "is_spacer": true,
+      "name": "Spacer 2"
+    },
+    {
+      "material": "aluminized_kapton",
+      "emissivity": 0.035,
+      "thickness_um": 25,
+      "is_spacer": false,
+      "name": "Outer shield 3 (Kapton)"
+    },
+    {
+      "material": "dacron_net",
+      "emissivity": 0.85,
+      "thickness_um": null,
+      "is_spacer": true,
+      "name": "Spacer 3"
+    },
+    {
+      "material": "aluminized_kapton",
+      "emissivity": 0.035,
+      "thickness_um": 25,
+      "is_spacer": false,
+      "name": "Outer shield 4 (Kapton)"
+    },
+    {
+      "material": "dacron_net",
+      "emissivity": 0.85,
+      "thickness_um": null,
+      "is_spacer": true,
+      "name": "Spacer 4"
+    },
+    {
+      "material": "aluminized_kapton",
+      "emissivity": 0.035,
+      "thickness_um": 25,
+      "is_spacer": false,
+      "name": "Outer shield 5 (Kapton)"
+    },
+    {
+      "material": "dacron_net",
+      "emissivity": 0.85,
+      "thickness_um": null,
+      "is_spacer": true,
+      "name": "Spacer 5"
+    },
+    {
+      "material": "double_aluminized_mylar",
+      "emissivity": 0.03,
+      "thickness_um": 6,
+      "is_spacer": false,
+      "name": "Inner shield 1 (DAM)"
+    },
+    {
+      "material": "dacron_net",
+      "emissivity": 0.85,
+      "thickness_um": null,
+      "is_spacer": true,
+      "name": "Spacer 6"
+    },
+    {
+      "material": "double_aluminized_mylar",
+      "emissivity": 0.03,
+      "thickness_um": 6,
+      "is_spacer": false,
+      "name": "Inner shield 2 (DAM)"
+    },
+    {
+      "material": "dacron_net",
+      "emissivity": 0.85,
+      "thickness_um": null,
+      "is_spacer": true,
+      "name": "Spacer 7"
+    },
+    {
+      "material": "double_aluminized_mylar",
+      "emissivity": 0.03,
+      "thickness_um": 6,
+      "is_spacer": false,
+      "name": "Inner shield 3 (DAM)"
+    },
+    {
+      "material": "dacron_net",
+      "emissivity": 0.85,
+      "thickness_um": null,
+      "is_spacer": true,
+      "name": "Spacer 8"
+    },
+    {
+      "material": "double_aluminized_mylar",
+      "emissivity": 0.03,
+      "thickness_um": 6,
+      "is_spacer": false,
+      "name": "Inner shield 4 (DAM)"
+    },
+    {
+      "material": "dacron_net",
+      "emissivity": 0.85,
+      "thickness_um": null,
+      "is_spacer": true,
+      "name": "Spacer 9"
+    },
+    {
+      "material": "double_aluminized_mylar",
+      "emissivity": 0.03,
+      "thickness_um": 6,
+      "is_spacer": false,
+      "name": "Inner shield 5 (DAM)"
+    },
+    {
+      "material": "dacron_net",
+      "emissivity": 0.85,
+      "thickness_um": null,
+      "is_spacer": true,
+      "name": "Spacer 10"
+    },
+    {
+      "material": "double_aluminized_mylar",
+      "emissivity": 0.03,
+      "thickness_um": 6,
+      "is_spacer": false,
+      "name": "Inner shield 6 (DAM)"
+    },
+    {
+      "material": "dacron_net",
+      "emissivity": 0.85,
+      "thickness_um": null,
+      "is_spacer": true,
+      "name": "Spacer 11"
+    },
+    {
+      "material": "double_aluminized_mylar",
+      "emissivity": 0.03,
+      "thickness_um": 6,
+      "is_spacer": false,
+      "name": "Inner shield 7 (DAM)"
+    },
+    {
+      "material": "dacron_net",
+      "emissivity": 0.85,
+      "thickness_um": null,
+      "is_spacer": true,
+      "name": "Spacer 12"
+    },
+    {
+      "material": "double_aluminized_mylar",
+      "emissivity": 0.03,
+      "thickness_um": 6,
+      "is_spacer": false,
+      "name": "Inner shield 8 (DAM)"
+    },
+    {
+      "material": "dacron_net",
+      "emissivity": 0.85,
+      "thickness_um": null,
+      "is_spacer": true,
+      "name": "Spacer 13"
+    },
+    {
+      "material": "double_aluminized_mylar",
+      "emissivity": 0.03,
+      "thickness_um": 6,
+      "is_spacer": false,
+      "name": "Inner shield 9 (DAM)"
+    },
+    {
+      "material": "dacron_net",
+      "emissivity": 0.85,
+      "thickness_um": null,
+      "is_spacer": true,
+      "name": "Spacer 14"
+    },
+    {
+      "material": "double_aluminized_mylar",
+      "emissivity": 0.03,
+      "thickness_um": 6,
+      "is_spacer": false,
+      "name": "Inner shield 10 (DAM)"
+    },
+    {
+      "material": "dacron_net",
+      "emissivity": 0.85,
+      "thickness_um": null,
+      "is_spacer": true,
+      "name": "Spacer 15"
+    },
+    {
+      "material": "double_aluminized_mylar",
+      "emissivity": 0.03,
+      "thickness_um": 6,
+      "is_spacer": false,
+      "name": "Inner shield 11 (DAM)"
+    },
+    {
+      "material": "double_aluminized_mylar",
+      "emissivity": 0.03,
+      "thickness_um": 6,
+      "is_spacer": false,
+      "name": "Inner shield 12 (DAM)"
+    },
+    {
+      "material": "double_aluminized_mylar",
+      "emissivity": 0.03,
+      "thickness_um": 6,
+      "is_spacer": false,
+      "name": "Inner shield 13 (DAM)"
+    },
+    {
+      "material": "double_aluminized_mylar",
+      "emissivity": 0.03,
+      "thickness_um": 6,
+      "is_spacer": false,
+      "name": "Inner shield 14 (DAM)"
+    },
+    {
+      "material": "double_aluminized_mylar",
+      "emissivity": 0.03,
+      "thickness_um": 6,
+      "is_spacer": false,
+      "name": "Inner shield 15 (DAM)"
+    }
+  ]
+}
