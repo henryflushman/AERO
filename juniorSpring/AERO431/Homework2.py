@@ -1,3 +1,28 @@
+# ╔═════════════════════════════════════════════════════════════╗
+# ║                                                             ║
+# ║        .o.       oooooooooooo ooooooooo.     .oooooo.       ║
+# ║       .888.      `888'     `8 `888   `Y88.  d8P'  `Y8b      ║
+# ║      .8"888.      888          888   .d88' 888      888     ║
+# ║     .8' `888.     888oooo8     888ooo88P'  888      888     ║
+# ║    .88ooo8888.    888    "     888`88b.    888      888     ║
+# ║   .8'     `888.   888       o  888  `88b.  `88b    d88'     ║
+# ║  o88o     o8888o o888ooooood8 o888o  o888o  `Y8bood8P'      ║
+# ║                                                             ║
+# ║                ── CALIFORNIA POLYTECHNIC ──                 ║
+# ║                                                             ║
+# ╠═════════════════════════════════════════════════════════════╣
+# ║   Author      :  Henry Flushman                             ║
+# ║   Course      :  AERO431 - Aerospace Structural Analysis II ║
+# ║   Assignment  :  Homework 2                                 ║
+# ║   Date        :  April 27, 2026                             ║
+# ╚═════════════════════════════════════════════════════════════╝
+
+import sys
+from pathlib import Path
+
+libFRC_path = Path(__file__).parent.parent.parent / "juniorWinter" / "AERO331"
+sys.path.insert(0, str(libFRC_path))
+
 import numpy as np
 import sympy as sp
 import matplotlib.pyplot as plt
