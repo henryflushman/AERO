@@ -17,6 +17,8 @@
 # ║   Date        :  April 27, 2026                             ║
 # ╚═════════════════════════════════════════════════════════════╝
 
+
+# === Imports ==================================================
 import sys
 from pathlib import Path
 
@@ -26,7 +28,7 @@ sys.path.insert(0, str(libFRC_path))
 import numpy as np
 import sympy as sp
 import matplotlib.pyplot as plt
-from juniorWinter.AERO331.libFRC_v1_1 import Laminate
+from libFRC_v1_1 import Laminate    # type: ignore
 
 # Sympy symbols
 x = sp.Symbol('x')
@@ -106,6 +108,11 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
+print("\n" + "-" * 50)
+print("Observations:")
+print("\nThe Rayleigh-Ritz approximation converges toward the exact solution as more basis functions are added. Because the load is not placed in the middle, both symmetric and non-symmetric functions have nonzero coefficients.")
+print("-" * 50)
 
 # =============================================================
 #  PROBLEM 2 – Cantilever Wing, Distributed Lift Load
@@ -192,6 +199,11 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
+print("\n" + "-" * 50)
+print("Observations:")
+print("\nThe solution converges quickly, only needing 3 basis functions. The tip deflection scales exactly as v^2, which directly follows from the lift load also being proportional to v^2")
+print("-" * 50)
+
 # =============================================================
 #  PROBLEM 3 – Cantilever Plate, Distributed Lift Load Along x
 # =============================================================
@@ -275,9 +287,12 @@ for name, basis in spaces:
     print(f"{name:>4}   {len(basis):>3} {tip*1000:>10.4f}")
     
 print(f"\nBeam theory tip deflection (Problem 2, v=20): {tips[N]*1000:.4f} mm")
-print("Plate model is stiffer due to Poisson coupling between x and y directions")
 print("this makes plate_tip deflection < beam_tip deflection")
 
+print("\n" + "-" * 50)
+print("Observations:")
+print("\nThe plate model consistently predicts less tip deflection than the beam assumption. This is expected as the plate is stiffer, resisting bending in both the spanwise and the chordwise directions")
+print("-" * 50)
 
 # =============================================================
 #  PROBLEM 4 – Cantilever Laminate Plate, [θ/0/90]_s
@@ -374,6 +389,7 @@ ax2.plot(thetas, twists_p4, 's-')
 ax2.set_xlabel('θ')
 ax2.set_ylabel('Twist ∂w/∂y(l,0)    [m/m]')
 ax2.set_title('Problem 4: Tip twist vs θ')
+ax2.grid(True)
 
 plt.tight_layout()
 plt.show()
