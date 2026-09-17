@@ -148,6 +148,41 @@ def relative_state_eci_to_lvlh(
     return rho_lvlh, rho_dot_lvlh
 
 
+def relative_state_lvlh_to_eci(
+    chief_r_eci_km,
+    chief_v_eci_km_s,
+    rho_lvlh,
+    rho_dot_lvlh,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Convert a rotating LVLH relative state into a deputy ECI state."""
+    rc = _vec3(chief_r_eci_km, "chief_r_eci_km")
+    vc = _vec3(chief_v_eci_km_s, "chief_v_eci_km_s")
+    rho = _vec3(rho_lvlh, "rho_lvlh")
+    rho_dot = _vec3(rho_dot_lvlh, "rho_dot_lvlh")
+
+    C_lvlh_to_eci = lvlh_to_eci_dcm(rc, vc)
+
+    h_mag = np.linalg.norm(np.cross(rc, vc))
+    r_mag = np.linalg.norm(rc)
+
+    omega_lvlh = np.array([
+        0.0,
+        0.0,
+        h_mag / r_mag**2,
+    ])
+
+    rho_eci = C_lvlh_to_eci @ rho
+
+    rho_dot_eci = C_lvlh_to_eci @ (
+        rho_dot + np.cross(omega_lvlh, rho)
+    )
+
+    deputy_r_eci = rc + rho_eci
+    deputy_v_eci = vc + rho_dot_eci
+
+    return deputy_r_eci, deputy_v_eci
+
+
 def perifocal_to_eci_dcm(i_rad: float, raan_rad: float, argp_rad: float) -> np.ndarray:
     """Return the PQW/perifocal -> ECI DCM."""
     return rot3(raan_rad) @ rot1(i_rad) @ rot3(argp_rad)
@@ -248,6 +283,7 @@ __all__ = [
     "eci_to_lvlh",
     "lvlh_to_eci",
     "relative_state_eci_to_lvlh",
+    "relative_state_lvlh_to_eci",
     "perifocal_to_eci_dcm",
     "eci_to_perifocal_dcm",
     "eci_to_orbital_plane",

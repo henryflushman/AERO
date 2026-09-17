@@ -1,23 +1,28 @@
 {
     "python.linting.enabled":  true,
-    "terminal.integrated.profiles.windows":  {
-                                                 "Command Prompt (AERO)":  {
-                                                                                  "args":  [
-                                                                                               "/K",
-                                                                                               "C:\\Users\\hlflu\\anaconda3\\Scripts\\activate.bat \u0026\u0026 conda activate AERO"
-                                                                                           ],
-                                                                                  "path":  "C:\\WINDOWS\\System32\\cmd.exe"
-                                                                              }
-                                             },
+      "terminal.integrated.profiles.windows": {
+        "AEROPowerShell": {
+        "path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+        }
+    },
+
+    "terminal.integrated.defaultProfile.windows":  "AEROPowerShell",
+    "terminal.integrated.agentHostProfile.windows": "AEROPowerShell",
+
     "python.defaultInterpreterPath":  "C:\\Users\\hlflu\\anaconda3\\envs\\AERO\\python.exe",
-    "terminal.integrated.defaultProfile.windows":  "Command Prompt (AERO)",
-    "python.linting.flake8Enabled":  true,
-    "python.formatting.provider":  "black",
+
     "[python]":  {
                      "editor.defaultFormatter":  "ms-python.python",
                      "editor.formatOnSave":  true
                  },
     "python.analysis.typeCheckingMode": "basic",
     "python-envs.defaultEnvManager": "ms-python.python:conda",
-    "python-envs.defaultPackageManager": "ms-python.python:conda"
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "cSpell.words": [
+        "LVLH",
+        "meananomaly",
+        "nmag"
+    ]
 }
+
+

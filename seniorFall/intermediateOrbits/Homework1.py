@@ -28,7 +28,8 @@ from IntermediateOrbitsTools import (
     StateVector,
     eci_to_lvlh,
     propagate_two_body,
-    R_EARTH_KM
+    R_EARTH_KM,
+    relative_state_eci_to_lvlh
 )
 
 
@@ -69,7 +70,7 @@ print(f"Closest approach: {distance[k]:.3f} km")
 print(f"Time of closest approach: {t[k]:.3f} s ({t[k] / 3600.0:.3f} hr)")
 print(f"Relative position at closest approach [R, T, N]: {rho[k]} km")
 
-# One required graph: relative position history with closest-approach time marked.
+# --- Graphing
 fig = plt.figure()
 
 ax = fig.add_subplot(
@@ -128,27 +129,90 @@ plt.show()
 
 # Problem 2
 
-TARGET_POS = np.array([0, 6678, 0])    # ECI
-TARGET_VEL = np.array([0, 0, 7.7258])  # ECI
-TARGET_ACC = np.array([0, -0.0089, 0]) # ECI
+TARGET_POS = np.array([0.0, 6678, 0.0])    # ECI
+TARGET_VEL = np.array([0.0, 0.0, 7.7258])  # ECI
+TARGET_ACC = np.array([0.0, -0.0089, 0.0]) # ECI
 
-CHASER_POS = np.array([0, 0, 6628])    # ECI
-CHASER_VEL = np.array([0, -7.7549, 0]) # ECI
-CHASER_ACC = np.array([0, 0, -0.0091]) # ECI
+CHASER_POS = np.array([0.0, 0.0, 6628])    # ECI
+CHASER_VEL = np.array([0.0, -7.7549, 0.0]) # ECI
+CHASER_ACC = np.array([0.0, 0.0, -0.0091]) # ECI
 
-# Build LVLH DCM
-R_lvlh = TARGET_POS / np.linalg.norm(TARGET_POS)
-N_lvlh = np.cross(TARGET_POS, TARGET_VEL)/(np.linalg.norm(np.cross(TARGET_POS, TARGET_VEL)))
-T_lvlh = np.cross(N_lvlh, R_lvlh)
+# Rel. pos and vel in LVLH
+rho, rho_dot = relative_state_eci_to_lvlh(
+    TARGET_POS,
+    TARGET_VEL,
+    CHASER_POS,
+    CHASER_VEL,
+)
 
-C_lvlh_eci = np.vstack([R_lvlh, T_lvlh, N_lvlh])
+R = np.linalg.norm(TARGET_POS)
 
+h = np.linalg.norm(
+    np.cross(
+        TARGET_POS,
+        TARGET_VEL,
+    )
+)
 
-print(C_lvlh_eci)
+# ang vel LVLH
+omega = np.array([
+    0.0,
+    0.0,
+    h / R**2,
+])
 
-dr_0 = CHASER_POS - TARGET_POS
+# ang acc LVLH
+omega_dot = (
+    -2.0
+    * np.dot(
+        TARGET_VEL,
+        TARGET_POS,
+    )
+    / R**2
+    * omega
+)
 
-rho = C_lvlh_eci @ dr_0
+coriolis = (
+    2.0
+    * np.cross(
+        omega,
+        rho_dot,
+    )
+)
 
+euler = np.cross(
+    omega_dot,
+    rho,
+)
 
+centrifugal = np.cross(
+    omega,
+    np.cross(
+        omega,
+        rho,
+    )
+)
+
+# del acc LVLH
+delta_a_lvlh = eci_to_lvlh(
+    CHASER_ACC - TARGET_ACC,
+    TARGET_POS,
+    TARGET_VEL,
+)
+
+# five term acc eq
+rho_ddot = (
+    delta_a_lvlh
+    - coriolis
+    - euler
+    - centrifugal
+)
+
+print("Relative Position [R, T, N] km:")
 print(rho)
+
+print("\nRelative Velocity [R, T, N] km/s:")
+print(rho_dot)
+
+print("\nRelative Acceleration [R, T, N] km/s^2:")
+print(rho_ddot)

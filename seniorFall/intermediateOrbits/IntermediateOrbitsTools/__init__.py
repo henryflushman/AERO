@@ -20,6 +20,7 @@ from .OrbitalFrames import (
     lvlh_to_eci,
     perifocal_to_eci_dcm,
     relative_state_eci_to_lvlh,
+    relative_state_lvlh_to_eci,
     rot1,
     rot2,
     rot3,
@@ -34,6 +35,14 @@ from .Propagators import (
     propagate_universal_anomaly,
     universal_anomaly_state,
     two_body_acceleration,
+)
+from .RelativeMotion import (
+    cwhill_delr_delv,
+    cwhill_propagate,
+    cwhill_state_transition_matrix,
+    exact_relative_motion,
+    mean_motion_from_orbit_radius,
+    relative_separation_norm,
 )
 from .TLETools import TLERecord, parse_tle_file
 from .CesiumOrbit import CesiumScene, times_from_seconds, trajectory_packet
@@ -57,6 +66,13 @@ __all__ = [
     "eci_to_lvlh",
     "lvlh_to_eci",
     "relative_state_eci_to_lvlh",
+    "relative_state_lvlh_to_eci",
+    "mean_motion_from_orbit_radius",
+    "cwhill_state_transition_matrix",
+    "cwhill_delr_delv",
+    "cwhill_propagate",
+    "exact_relative_motion",
+    "relative_separation_norm",
     "eci_to_perifocal_dcm",
     "perifocal_to_eci_dcm",
     "eci_to_orbital_plane",
