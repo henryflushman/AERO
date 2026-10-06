@@ -22,6 +22,7 @@
 from matplotlib.pyplot import figure
 import numpy as np
 from scipy.optimize import brentq
+from ambiance import Atmosphere
 
 
 # === CONFIG =============================
@@ -48,6 +49,11 @@ GAMMA_P7 = 1.20
 PRESSURE_RATIO_P7 = [2.0, 10.0, 100.0, 1000.0, np.inf]
 
 MACH_SPAN_P7 = np.linspace(1.0, 5.5, 1000)
+
+
+# Problem 8
+ALTITUDE_P8 = 10_000  # m
+
 
 # ========================================
 
@@ -185,3 +191,11 @@ plt.ylim(0, 2.32)
 plt.grid()
 plt.legend()
 plt.show()
+
+
+# Problem 8 Analysis
+atm = Atmosphere(ALTITUDE_P8)
+
+pressure_p8 = atm.pressure
+
+print(pressure_p8)

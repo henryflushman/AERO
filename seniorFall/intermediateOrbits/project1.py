@@ -22,17 +22,30 @@
 import numpy as np
 import pandas as pd
 
-import 
-
+from IntermediateOrbitsTools import ClassicalOrbitalElements, R_EARTH_KM
+from IntermediateOrbitsTools.RelativeMotion import (
+    cwhill_transition_matrix,
+    cwhill_delr_delv,
+)
 
 
 # === CONFIG =======================
 
-TARGET_ECI  = np.array([0.0, 0.0, 0.0])   # Replace with the actual ECI coordinates of the target
-CHASER_LVLH = np.array([0.0, 100.0, 0.0]) # 100.0 km away from target
+TARGET_ECI_0  = np.array(
+    [0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0]
+)   # Replace with the actual ECI coordinates of the target
 
-
+CHASER_LVLH_0 = np.array(
+    [0.0, 100.0, 0.0],
+    [0.0, 0.0, 0.0]
+) # 100.0 km away from target
 
 # ==================================
 
 
+# Maneuver 1 will be a radially inward burn.
+
+# a = 100km initially, therefore delv = (100.0/2.0)*mean_motion
+
+delv_1 = np.array([-1.0, 0.0, 0.0])
