@@ -432,10 +432,15 @@ def propagate_custom(
     atol: float = DEFAULT_ATOL,
     method: str = "DOP853",
     args: tuple = (),
+    allow_any_size: bool = False,
     **solve_ivp_kwargs,
 ) -> PropagationResult:
     """Generic ``solve_ivp`` wrapper for a six-state orbital ODE."""
-    y0 = _state6(initial_state)
+    y0 = np.asarray(initial_state.vector6 if isinstance(initial_state, StateVector) else initial_state, dtype=float).reshape(-1)
+    if y0.size != 6 and not allow_any_size:
+        raise ValueError(
+            "initial_state must contain six Cartesian state values."
+        )
     t_eval = None if times_s is None else np.asarray(list(times_s), dtype=float)
 
     solution = solve_ivp(
