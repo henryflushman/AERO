@@ -24,12 +24,12 @@ PERIOD_S = TARGET_ORBIT.period_s
 
 START_Y_KM = -100.0  # chaser starts behind the target on the V-bar
 PHASING_END_Y_KM = -40.0  # V-bar position after revolutions are complete (football apse)
-PHASING_REVS = 1  # number of revolutions made before reaching -25 km on V-bar
+PHASING_REVS = 4  # number of revolutions made before reaching -25 km on V-bar
 
 FOOTBALL_AXES_KM = np.array([40.0, 20.0])  # semi-axes [along-track, radial]; CW forces 2:1
 
 HOP_TARGETS_KM = [1.0, 0.3, 0.02]
-HOP_REVS = [1, 1, 1]  # revolutions per hop (to be changed later)
+HOP_REVS = [2, 2, 2]  # revolutions per hop (to be changed later)
 VBAR_RATE_KM_S = 1e-5
 APPROACH_STEP_S = 200.0  # time between corrective burns during the V-bar approach
 
@@ -123,7 +123,7 @@ def sample(state, duration_s, points=400):
     return times, np.array([propagate_cw(state, t) for t in times])
 
 
-def run_mission():
+def run_mission(rev_numbers: list, extra_time=0.0):
     """Fly the full mission; returns arc segments and a burn log."""
     segments, burns = [], []  # segments: (label, t0, times, states)
 
@@ -132,7 +132,7 @@ def run_mission():
         return t0 + times[-1]
 
     state0 = np.array([0.0, START_Y_KM, 0.0, 0.0, 0.0, 0.0])
-    arrived, b1, b2, duration = vbar_hop(state0, PHASING_END_Y_KM, PHASING_REVS)
+    arrived, b1, b2, duration = vbar_hop(state0, PHASING_END_Y_KM, rev_numbers[0])
     post_burn = state0.copy()
     post_burn[3:] += b1
     burns.append((f"Hop to {PHASING_END_Y_KM * 1e3:.0f} m (burn 1)", 0.0, b1))
@@ -150,7 +150,7 @@ def run_mission():
     else:
         raise ValueError("[End of Football Orbit] Rbar nominal value must be close to 0.0")
 
-    for target_y, revs in zip(HOP_TARGETS_KM, HOP_REVS):
+    for target_y, revs in zip(HOP_TARGETS_KM, rev_numbers[1:]):
         label = f"Hop to {target_y * 1e3:.0f} m"
         arrived, b1, b2, duration = vbar_hop(state, target_y, revs)
         post_burn = state.copy()
@@ -164,8 +164,8 @@ def run_mission():
     dt = approach_s / (len(history) - 1)
     for k, b in enumerate(approach_burns):
         burns.append(("V-bar approach", t + k * dt, b))
-    add_segment("V-bar approach", t, np.linspace(0.0, approach_s, len(history)), history)
-    return segments, burns
+    tf = add_segment("V-bar approach", t, np.linspace(0.0, approach_s, len(history)), history)
+    return segments, burns, tf
 
 
 def plot_mission(segments):
@@ -218,8 +218,36 @@ def plot_mission(segments):
 
 
 if __name__ == "__main__":
-    segments, burns = run_mission()
-
+    all_rev_numbers = []
+    all_segments = []
+    all_burns = []
+    all_dvs = []
+    
+    for i in range(6):
+        for j in range(6):
+            for k in range(6):
+                for l in range(6):
+                    candidate_revs = [i + 1, j + 1, k + 1, l + 1]
+                    segments, burns, tf = run_mission(candidate_revs)
+                    
+                    if (tf/3600.0) > 240:
+                        continue
+                    else:
+                        all_rev_numbers.append(candidate_revs)
+                        total_dv = sum(np.linalg.norm(dv) for _, _, dv in burns)
+                        all_dvs.append(total_dv)
+                        all_segments.append(segments)
+                        all_burns.append(burns)
+                    
+    
+    lowest_dv_index = np.argmin(all_dvs)
+    lowest_dv = all_dvs[lowest_dv_index]
+    segments = all_segments[lowest_dv_index]
+    burns = all_burns[lowest_dv_index]
+    rev_num = all_rev_numbers[lowest_dv_index]
+    
+    
+    
     table = pd.DataFrame(
         [(name, t / 3600.0, *(dv * 1e3), np.linalg.norm(dv) * 1e3) for name, t, dv in burns],
         columns=["Burn", "t (hr)", "dVx (m/s)", "dVy (m/s)", "dVz (m/s)", "|dV| (m/s)"],
@@ -230,6 +258,8 @@ if __name__ == "__main__":
     print(table.groupby(phase, sort=False)["|dV| (m/s)"].sum().to_string(float_format=lambda v: f"{v:.5f}"))
     print(f"Mission total dV: {table['|dV| (m/s)'].sum():.4f} m/s")
     print("Final position (km):", segments[-1][3][-1, :3])
+    print("Revolution numbers:", rev_num)
+    
 
     plot_mission(segments)
     plt.show()

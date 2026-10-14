@@ -11,14 +11,18 @@ Sources for numeric inputs (also cited in the accompanying report):
   * Condon et al., 2014, slide 3: 384,400 km Earth-Moon distance and
     64,166 km Moon-to-L2 distance; used to derive the 448,566 km L2
     point-center range.
-  * Giggenbach, Knopp, and Fuchs, 2023, Eq. (20) and Table V: 1550 nm,
-    250 photons/physical bit, -1 dB transmitter loss, -3 dB pointing loss,
-    -1 dB atmospheric loss, and -4.1 dB receiver internal/splitting loss.
+  * Giggenbach, Knopp, and Fuchs, 2023, Eq. (20) and Table 5: 1550 nm,
+    250 photons/physical bit, -1 dB transmitter loss, -1 dB atmospheric
+    loss, and -4.1 dB receiver internal/splitting loss.
+  * Giggenbach, Knopp, and Fuchs, 2023, Eqs. (9)-(12): mean pointing loss
+    from a Rayleigh-distributed radial beam wander of standard deviation
+    sigma, applied to a Gaussian far-field beam. The 5 microradian value of
+    sigma is an assumed input, not a value taken from a source.
   * Downey, 2024: 2/3 is an implemented CCSDS HPE code-rate option.
   * Burleigh et al., 1998: a below-5% protocol-overhead objective; 5% is
     used here as a conservative study allocation.
 
-The code is intentionally a screening model, not a flight link budget. It
+The code is just a screening model, not a flight link budget. It
 uses ideal aperture gain and a clear-sky loss allocation; it does not model
 weather, scintillation, telescope efficiency, adaptive modulation/coding,
 ground-network availability, or spacecraft electrical/thermal power.
@@ -49,7 +53,7 @@ MINIMUM_PAYLOAD_RATE_BPS = 5.0e9     # minimum requirement in the solicitation
 # Receiver/model inputs adapted from Giggenbach et al. (2023).
 PHOTONS_PER_PHYSICAL_BIT = 250.0
 TRANSMITTER_INTERNAL_LOSS_DB = -1.0
-POINTING_LOSS_DB = -3.0
+POINTING_ERROR_RAD = 5.0e-6   # assumed rms (1-sigma) radial pointing error
 ATMOSPHERIC_LOSS_DB = -1.0
 RECEIVER_INTERNAL_LOSS_DB = -4.1
 
@@ -132,6 +136,20 @@ def aperture_gain_db(diameter_m: float, wavelength_m: float = WAVELENGTH_M) -> f
     return 20.0 * np.log10(np.pi * diameter_m / wavelength_m)
 
 
+def beam_fwhm_rad(diameter_m: float, wavelength_m: float = WAVELENGTH_M) -> float:
+    """Return the FWHM divergence angle whose Gaussian-beam gain (Giggenbach
+    Eq. 10) equals the ideal aperture gain used above, so the pointing and
+    gain terms describe the same beam."""
+    return 4.0 * np.sqrt(np.log(2.0)) * wavelength_m / (np.pi * diameter_m)
+
+
+def pointing_loss_db(sigma_rad: float = POINTING_ERROR_RAD) -> float:
+    """Return the mean pointing loss in dB (Giggenbach Eqs. 11-12)."""
+    theta_fwhm = beam_fwhm_rad(TRANSMITTER_DIAMETER_M)
+    beta = theta_fwhm**2 / (4.0 * np.log(2.0) * sigma_rad**2)
+    return 10.0 * np.log10(beta / (beta + 1.0))
+
+
 def free_space_path_gain_db(distance_m: float, wavelength_m: float = WAVELENGTH_M) -> float:
     """Return the negative free-space path gain in dB."""
     return 20.0 * np.log10(wavelength_m / (4.0 * np.pi * distance_m))
@@ -160,7 +178,7 @@ def total_link_gain_db(distance_m: float) -> float:
         + aperture_gain_db(RECEIVER_DIAMETER_M)
         + free_space_path_gain_db(distance_m)
         + TRANSMITTER_INTERNAL_LOSS_DB
-        + POINTING_LOSS_DB
+        + pointing_loss_db()
         + ATMOSPHERIC_LOSS_DB
         + RECEIVER_INTERNAL_LOSS_DB
     )
@@ -208,6 +226,11 @@ def print_case_summary(rows: list[dict[str, float | str]]) -> None:
     """Print readable results for traceability and use in the report."""
     print("50 Gbps payload sizing case (solicitation desired goal)")
     print(
+        f"Beam FWHM: {beam_fwhm_rad(TRANSMITTER_DIAMETER_M) * 1e6:.3f} urad; "
+        f"pointing error {POINTING_ERROR_RAD * 1e6:.1f} urad rms -> "
+        f"pointing loss {pointing_loss_db():.3f} dB"
+    )
+    print(
         f"Physical aggregate rate: {payload_to_physical_rate_bps(TOTAL_PAYLOAD_RATE_BPS) / 1e9:.3f} Gbps "
         f"(FEC={FEC_CODE_RATE:.3f}, overhead={PROTOCOL_OVERHEAD_FRACTION:.0%})"
     )
@@ -254,12 +277,8 @@ def plot_power_vs_rate(output_dir: Path) -> Path:
         powers_w = required_transmitter_power_w(distance_m, rates_gbps * 1e9)
         ax.plot(rates_gbps, powers_w, label=path_name, color=colors[path_name], linewidth=2.0)
 
-    for power_w, color in ((75, "#607d8b"), (125, "#455a64"), (225, "#263238")):
-        ax.axhline(power_w, color=color, linestyle="--", linewidth=1.0)
-        ax.text(50.2, power_w, f"{power_w} W", va="center", fontsize=8, color=color)
-
-    ax.set_xlim(0, 55)
-    ax.set_ylim(0, 240)
+    ax.set_xlim(0, 50)
+    ax.set_ylim(0, 400)
     ax.set_xlabel("Payload rate carried by one direct optical path (Gbps)")
     ax.set_ylabel("Required spacecraft optical output (W)")
     ax.set_title("Screening optical-output requirement with FEC and overhead")
