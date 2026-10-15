@@ -278,7 +278,9 @@ def filter_dataframe(df: pd.DataFrame, filters: dict[str, Any]) -> pd.DataFrame:
     for column, config in filters.items():
         if not config or config.get("enabled") is False:
             continue
-        dtype = infer_dtype(out[column]) if column in out.columns else None
+        # Infer from the original dataset so preceding filters cannot change
+        # a column's type (or turn a now-empty column into a string).
+        dtype = config.get("dtype", infer_dtype(df[column])) if column in df.columns else None
         if dtype is None:
             continue
 
@@ -299,8 +301,12 @@ def filter_dataframe(df: pd.DataFrame, filters: dict[str, Any]) -> pd.DataFrame:
                 if value is not None:
                     out = out[col_values == float(value)]
             elif op == "within":
-                if lower is not None: out = out[col_values >= float(lower)]
-                if upper is not None: out = out[col_values <= float(upper)]
+                mask = pd.Series(True, index=out.index)
+                if lower is not None:
+                    mask &= col_values >= float(lower)
+                if upper is not None:
+                    mask &= col_values <= float(upper)
+                out = out[mask]
 
         elif dtype == "bool":
             choice = config.get("value", "all")
@@ -317,10 +323,15 @@ def filter_dataframe(df: pd.DataFrame, filters: dict[str, Any]) -> pd.DataFrame:
         elif dtype == "datetime":
             start_value = config.get("start")
             end_value = config.get("end")
+            dates = pd.to_datetime(out[column], errors="coerce", utc=True)
+            mask = pd.Series(True, index=out.index)
             if start_value:
-                out = out[pd.to_datetime(out[column], errors="coerce") >= pd.to_datetime(start_value)]
+                mask &= dates >= pd.to_datetime(start_value, utc=True)
             if end_value:
-                out = out[pd.to_datetime(out[column], errors="coerce") <= pd.to_datetime(end_value)]
+                # Sidebar inputs are calendar dates: include the whole end day.
+                end_exclusive = pd.to_datetime(end_value, utc=True) + pd.Timedelta(days=1)
+                mask &= dates < end_exclusive
+            out = out[mask]
 
     return out
 
@@ -346,6 +357,7 @@ def get_display_columns(df: pd.DataFrame):
 
 def build_sidebar_filters(df: pd.DataFrame):
     filters: dict[str, Any] = {}
+    st.sidebar.caption("Enable numeric and date filters only when needed. Inactive filters keep records with missing values.")
     for column in sorted(df.columns):
         if column.startswith("_"):
             continue
@@ -355,6 +367,11 @@ def build_sidebar_filters(df: pd.DataFrame):
             dtype = infer_dtype(df[column])
 
         key = f"filter_{column}"
+        if dtype in {"float", "int", "datetime"}:
+            enabled = st.sidebar.checkbox(f"Filter {column}", value=False, key=f"{key}_enabled")
+            if not enabled:
+                filters[column] = {"enabled": False, "dtype": dtype}
+                continue
         if dtype in {"float", "int"}:
             numeric_values = pd.to_numeric(df[column], errors="coerce")
             valid = numeric_values.dropna()
@@ -395,9 +412,12 @@ def build_sidebar_filters(df: pd.DataFrame):
             filters[column] = {"enabled": choice != "all", "value": choice}
 
         elif dtype == "datetime":
-            start_val = st.sidebar.date_input(f"{column} start", value=pd.to_datetime(df[column].dropna().min()).date(), key=f"{key}_start")
-            end_val = st.sidebar.date_input(f"{column} end", value=pd.to_datetime(df[column].dropna().max()).date(), key=f"{key}_end")
-            filters[column] = {"enabled": True, "start": start_val.isoformat(), "end": end_val.isoformat()}
+            dates = pd.to_datetime(df[column], errors="coerce", utc=True).dropna()
+            if dates.empty:
+                continue
+            start_val = st.sidebar.date_input(f"{column} start", value=dates.min().date(), key=f"{key}_start")
+            end_val = st.sidebar.date_input(f"{column} end", value=dates.max().date(), key=f"{key}_end")
+            filters[column] = {"enabled": True, "dtype": dtype, "start": start_val.isoformat(), "end": end_val.isoformat()}
 
         else:
             value = st.sidebar.text_input(f"{column} contains", "", key=key)
@@ -452,6 +472,7 @@ def main():
     )
 
     st.subheader("Filtered results")
+    st.caption(f"Matching records: {len(filtered):,} of {len(dataset):,}")
     if filtered.empty:
         st.warning("No satellites match the current filter set.")
         return

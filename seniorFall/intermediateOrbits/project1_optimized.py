@@ -1,14 +1,24 @@
-﻿"""V-bar rendezvous: phasing -> football -> hops (1 km, 300 m, 20 m) -> V-bar approach.
+﻿"""V-bar rendezvous: phasing -> football -> hops -> V-bar approach.
 
 LVLH frame: x = radial (R-bar), y = along-track (V-bar), z = cross-track.
-Units: km, km/s, s.
+Units: km, km/s, s. The ECI plot shows the two-body target orbit and a scaled
+chaser path reconstructed from the mission's LVLH relative positions.
 """
+
+import csv
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from IntermediateOrbitsTools import ClassicalOrbitalElements
+from IntermediateOrbitsTools import (
+    ClassicalOrbitalElements,
+    R_EARTH_KM,
+    TLERecord,
+    lvlh_to_eci,
+    propagate_two_body,
+)
 from IntermediateOrbitsTools.RelativeMotion import cwhill_state_transition_matrix
 
 
@@ -24,33 +34,41 @@ PERIOD_S = TARGET_ORBIT.period_s
 
 START_Y_KM = -100.0  # chaser starts behind the target on the V-bar
 PHASING_END_Y_KM = -40.0  # V-bar position after revolutions are complete (football apse)
-PHASING_REVS = 4  # number of revolutions made before reaching -25 km on V-bar
 
 FOOTBALL_AXES_KM = np.array([40.0, 20.0])  # semi-axes [along-track, radial]; CW forces 2:1
 
 HOP_TARGETS_KM = [1.0, 0.3, 0.02]
-HOP_REVS = [2, 2, 2]  # revolutions per hop (to be changed later)
 VBAR_RATE_KM_S = 1e-5
 APPROACH_STEP_S = 200.0  # time between corrective burns during the V-bar approach
 
+MAX_REVS = 5  # maximum number of revolutions
+MISSION_DURATION_S = 10.0 * 24.0 * 3600.0
+MAX_APPROACH_DURATION_S = 3.0 * 3600.0
+RELATIVE_SCALE = 100.0  # visual scale applied to the relative ECI offset only
+ECI_PLOT_STEP_S = 300.0
+
 # ==================================
+
+
+def load_belinter_sat1_state():
+    """Convert BELINTERSAT 1's epoch TLE state to osculating elements and ECI."""
+    tle_path = Path(__file__).resolve().parent / "project1" / "BELINTERSAT1.csv"
+    with tle_path.open(newline="", encoding="utf-8") as tle_file:
+        rows = list(csv.DictReader(tle_file))
+
+    if len(rows) != 1:
+        raise ValueError(f"Expected one BELINTERSAT 1 TLE row in {tle_path}.")
+    row = rows[0]
+    if row.get("tle_line0", "").strip() != "0 BELINTERSAT 1":
+        raise ValueError(f"Unexpected satellite in {tle_path}.")
+
+    tle = TLERecord(row["tle_line1"], row["tle_line2"], name="BELINTERSAT 1")
+    return tle.coes_at_epoch().to_state()
 
 
 def propagate_cw(state, elapsed_s):
     """Propagate a relative LVLH state with the closed-form CW solution."""
     return cwhill_state_transition_matrix(elapsed_s, N_TARGET) @ state
-
-
-def initial_phasing_state():
-    """Start on the V-bar with an along-track velocity that drifts to PHASING_END_Y_KM.
-
-    With x0 = xdot0 = 0, CW gives y(T) = y0 - 3*T*ydot0 after one period, so the
-    chaser must be in a slightly lower (faster) orbit, i.e. ydot0 < 0.
-    """
-    duration = PHASING_REVS * PERIOD_S
-    ydot0 = (START_Y_KM - PHASING_END_Y_KM) / (3.0 * duration)
-    return np.array([0.0, START_Y_KM, 0.0, 0.0, ydot0, 0.0])
-
 
 def football_burn(state):
     """
@@ -90,14 +108,16 @@ def vbar_hop(state, target_y_km, revolutions=1):
 
 
 def vbar_approach(state, rate_km_s=VBAR_RATE_KM_S, step_s=APPROACH_STEP_S):
-    """Constant-rate V-bar approach to y = 0 using CW-targeted burns each step.
+    """Approach y = 0 at a positive constant speed using CW-targeted burns.
 
-    Every step solves for the velocity that carries the chaser from its current
-    position to the next V-bar point (0, y - rate*step) in step_s, then re-burns.
+    Every step solves for the velocity that carries the chaser to the next
+    point on a linear V-bar path from its current position to y = 0.
     Returns the final state, the burn list, and the position history.
     """
     y_start = state[1]
-    total_s = y_start / rate_km_s
+    if not np.isfinite(rate_km_s) or rate_km_s <= 0.0:
+        raise ValueError("V-bar approach rate must be a positive speed.")
+    total_s = abs(y_start) / rate_km_s
     steps = max(1, int(np.ceil(total_s / step_s)))
     dt = total_s / steps
     phi = cwhill_state_transition_matrix(dt, N_TARGET)
@@ -124,12 +144,27 @@ def sample(state, duration_s, points=400):
 
 
 def run_mission(rev_numbers: list, extra_time=0.0):
-    """Fly the full mission; returns arc segments and a burn log."""
+    """Fly the mission, allocating extra seconds to approach then staging holds."""
+    if (
+        not np.isfinite(extra_time)
+        or extra_time < 0.0
+        or extra_time > MISSION_DURATION_S
+    ):
+        raise ValueError("extra_time must be finite and no longer than 10 days.")
+
     segments, burns = [], []  # segments: (label, t0, times, states)
 
     def add_segment(label, t0, times, states):
         segments.append((label, t0, t0 + times, states))
         return t0 + times[-1]
+
+    base_approach_s = abs(HOP_TARGETS_KM[-1]) / VBAR_RATE_KM_S
+    approach_extra_s = min(
+        extra_time, max(0.0, MAX_APPROACH_DURATION_S - base_approach_s)
+    )
+    approach_duration_s = base_approach_s + approach_extra_s
+    approach_rate = abs(HOP_TARGETS_KM[-1]) / approach_duration_s
+    hold_duration_s = (extra_time - approach_extra_s) / len(HOP_TARGETS_KM)
 
     state0 = np.array([0.0, START_Y_KM, 0.0, 0.0, 0.0, 0.0])
     arrived, b1, b2, duration = vbar_hop(state0, PHASING_END_Y_KM, rev_numbers[0])
@@ -159,8 +194,19 @@ def run_mission(rev_numbers: list, extra_time=0.0):
         t = add_segment(label, t, *sample(post_burn, duration))
         burns.append((label + " (burn 2)", t, b2))
         state = arrived
+        if hold_duration_s > 0.0:
+            hold_label = f"Hold at {target_y * 1e3:.0f} m"
+            hold_states = np.vstack((state, state))
+            t = add_segment(
+                hold_label,
+                t,
+                np.array([0.0, hold_duration_s]),
+                hold_states,
+            )
 
-    state, approach_burns, history, approach_s = vbar_approach(state)
+    state, approach_burns, history, approach_s = vbar_approach(
+        state, rate_km_s=approach_rate
+    )
     dt = approach_s / (len(history) - 1)
     for k, b in enumerate(approach_burns):
         burns.append(("V-bar approach", t + k * dt, b))
@@ -217,36 +263,110 @@ def plot_mission(segments):
     return fig
 
 
+def plot_eci_mission(segments, target_initial_state):
+    """Create one ECI target/chaser plot for each mission segment."""
+    figures = []
+    for label, _, times, states in segments:
+        if label.startswith("Hold at "):
+            duration_s = times[-1] - times[0]
+            sample_count = max(2, int(np.ceil(duration_s / ECI_PLOT_STEP_S)) + 1)
+            plot_times = np.linspace(times[0], times[-1], sample_count)
+            relative_positions = np.repeat(states[:1, :3], sample_count, axis=0)
+        else:
+            plot_times = times
+            relative_positions = states[:, :3]
+
+        target_history = propagate_two_body(
+            target_initial_state,
+            (float(plot_times[0]), float(plot_times[-1])),
+            times_s=plot_times,
+            method="DOP853",
+        )
+        target_positions = target_history.positions_km
+        scaled_relative_eci = np.array(
+            [
+                lvlh_to_eci(
+                    relative_position * RELATIVE_SCALE,
+                    target_state[:3],
+                    target_state[3:],
+                )
+                for relative_position, target_state in zip(
+                    relative_positions, target_history.states
+                )
+            ]
+        )
+        chaser_positions = target_positions + scaled_relative_eci
+
+        fig = plt.figure(figsize=(11, 9))
+        ax = fig.add_subplot(111, projection="3d")
+        ax.plot(
+            *target_positions.T,
+            label="BELINTERSAT 1 (2BP)",
+            color="tab:blue",
+            linewidth=1.5,
+        )
+        ax.plot(
+            *chaser_positions.T,
+            label=f"Chaser (relative scale {RELATIVE_SCALE:g}x)",
+            color="tab:orange",
+            linewidth=1.0,
+        )
+
+        sphere_angles = np.linspace(0.0, 2.0 * np.pi, 36)
+        sphere_latitudes = np.linspace(-np.pi / 2.0, np.pi / 2.0, 18)
+        earth_x = R_EARTH_KM * np.outer(np.cos(sphere_angles), np.cos(sphere_latitudes))
+        earth_y = R_EARTH_KM * np.outer(np.sin(sphere_angles), np.cos(sphere_latitudes))
+        earth_z = R_EARTH_KM * np.outer(np.ones_like(sphere_angles), np.sin(sphere_latitudes))
+        ax.plot_surface(earth_x, earth_y, earth_z, color="steelblue", alpha=0.18, linewidth=0)
+
+        plot_points = np.vstack((target_positions, chaser_positions))
+        center = (plot_points.max(axis=0) + plot_points.min(axis=0)) / 2.0
+        radius = np.max(plot_points.max(axis=0) - plot_points.min(axis=0)) / 2.0
+        for axis, midpoint in zip((ax.set_xlim, ax.set_ylim, ax.set_zlim), center):
+            axis(midpoint - radius, midpoint + radius)
+
+        ax.set_box_aspect((1.0, 1.0, 1.0))
+        ax.set(
+            xlabel="ECI x (km)",
+            ylabel="ECI y (km)",
+            zlabel="ECI z (km)",
+            title=f"ECI Trajectory: {label}",
+        )
+        ax.legend()
+        fig.tight_layout()
+        figures.append(fig)
+
+    return figures
+
+
 if __name__ == "__main__":
     all_rev_numbers = []
-    all_segments = []
-    all_burns = []
     all_dvs = []
+    all_times = []
     
-    for i in range(6):
-        for j in range(6):
-            for k in range(6):
-                for l in range(6):
+    for i in range(MAX_REVS):
+        for j in range(MAX_REVS):
+            for k in range(MAX_REVS):
+                for l in range(MAX_REVS):
                     candidate_revs = [i + 1, j + 1, k + 1, l + 1]
                     segments, burns, tf = run_mission(candidate_revs)
                     
-                    if (tf/3600.0) > 240:
+                    if tf > MISSION_DURATION_S:
                         continue
                     else:
                         all_rev_numbers.append(candidate_revs)
                         total_dv = sum(np.linalg.norm(dv) for _, _, dv in burns)
                         all_dvs.append(total_dv)
-                        all_segments.append(segments)
-                        all_burns.append(burns)
+                        all_times.append(tf)
                     
     
     lowest_dv_index = np.argmin(all_dvs)
-    lowest_dv = all_dvs[lowest_dv_index]
-    segments = all_segments[lowest_dv_index]
-    burns = all_burns[lowest_dv_index]
     rev_num = all_rev_numbers[lowest_dv_index]
-    
-    
+    extra_time = MISSION_DURATION_S - all_times[lowest_dv_index]
+    segments, burns, tf = run_mission(rev_num, extra_time=extra_time)
+    if not np.isclose(tf, MISSION_DURATION_S):
+        raise RuntimeError("Selected mission did not reach the required 10-day duration.")
+
     
     table = pd.DataFrame(
         [(name, t / 3600.0, *(dv * 1e3), np.linalg.norm(dv) * 1e3) for name, t, dv in burns],
@@ -257,9 +377,11 @@ if __name__ == "__main__":
     phase = table["Burn"].str.replace(r" \(burn \d\)", "", regex=True)
     print(table.groupby(phase, sort=False)["|dV| (m/s)"].sum().to_string(float_format=lambda v: f"{v:.5f}"))
     print(f"Mission total dV: {table['|dV| (m/s)'].sum():.4f} m/s")
+    print(f"Mission duration: {tf / 3600.0:.6f} hr ({tf / 86400.0:.6f} days)")
     print("Final position (km):", segments[-1][3][-1, :3])
     print("Revolution numbers:", rev_num)
-    
+    target_initial_state = load_belinter_sat1_state()
 
     plot_mission(segments)
+    plot_eci_mission(segments, target_initial_state)
     plt.show()
