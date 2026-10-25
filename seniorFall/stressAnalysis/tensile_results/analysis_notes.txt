@@ -1,0 +1,88 @@
+TENSILE ANALYSIS REVIEW NOTES
+Calculate the tensile deliverables from the Team 13 Instron CSV exports.
+
+INSTALL:  python -m pip install numpy matplotlib
+RUN:      python tensile_lab_analysis.py --data-dir path/to/csv_files
+          python tensile_lab_analysis.py --data-dir . --no-plots
+
+Put both *_1.csv and *_2.csv exports in the data folder. The *_1 file contains
+specimen-specific dimensions AND raw data; *_2 repeats the raw data. Each test
+is analyzed once, using *_2 when available. No pandas or SciPy is required.
+
+BEFORE USING RESULTS IN YOUR PRESENTATION:
+1. Gauge lengths, widths, thicknesses, and Al 6061-T6 identification are filled
+   from Carbon.xlsx, BONES sheet. Inches are converted using 25.4 mm/in.
+   Carbon "L gage" is used as the original jaw-to-jaw length. Measurements are
+   embedded below; Carbon.xlsx is not needed when running the script.
+2. Inspect the *_review.png figures, set elastic_time_s=(start, end), and set
+   sensor_valid_until_s to the last time the gauge/extensometer is reliable.
+   Moduli without a chosen interval are PRELIMINARY. Offset yield requires
+   BOTH settings; a numerical crossing alone cannot prove the gauge worked.
+3. Set fracture_time_s to the last sample immediately BEFORE fracture. Without
+   it, any sudden-drop estimate is explicitly a preliminary candidate. No drop
+   means fracture and failure elongation are left blank.
+4. If debonding is confirmed, set debond_time_s to its onset. Debond strain is
+   the last strain value BEFORE that time. The automatic jump suggestion is
+   only a review aid: specimen failure, slip, saturation, and electrical faults
+   can resemble debonding. It is never accepted automatically.
+5. Confirm material, sensor, and direction. Every supplied file says "Bonded
+   Strain Gage". There is no explicitly identified extensometer channel. If a
+   mislabeled test actually used one, change sensor to "extensometer" here.
+   Extensometer strains are already strains; do NOT divide them by length.
+
+UNITS / METHODS:
+  A0 in mm^2; F in kN; sigma = 1000*F/A0 in MPa (engineering stress).
+  epsilon_Instron = (extension - chosen zero)/original_length in mm/mm.
+  Exported gauge strain is percent: epsilon = exported_value / 100.
+  sigma = E*epsilon + b fitted by ordinary least squares, with an intercept.
+  Offset line: sigma = E*(epsilon - 0.002) + b. Yield is the first continuous
+  positive-to-negative intersection after the selected elastic interval,
+  before UTS and before the sensor cutoff; interpolation is between samples.
+  For a brittle composite, an offset intersection is an offset strength;
+  it does not establish that the material exhibits metal-like plastic yield.
+  Poisson ratio uses separate tests at a COMMON elastic stress interval:
+       nu = -(d epsilon_transverse / d sigma)/(d epsilon_axial / d sigma).
+  This assumes comparable material/layup and test conditions. Never pair times
+  from separate tests or use a transverse gauge to compute Young's modulus.
+  Elongation is an Instron estimate at fracture, not measured post-fracture
+  permanent elongation; machine compliance and jaw slip can bias it.
+
+OUTPUTS: specimen_summary.csv, poisson_summary.csv, replicate_summary.csv,
+  reference_comparison.csv, analysis_notes.txt, example_calculations.txt,
+  per-test cleaned CSVs, and PNG figures. Blank cells mean unavailable, not 0.
+  Cleaned CSVs retain load/extension through the fracture candidate and blank
+  sensor readings outside the usable sensor interval. Review plots retain raw
+  data so that excluded portions remain visible for checking.
+
+Scope: tensile calculations only. Workbook impact/fatigue data are outside
+this script's scope. Theoretical composite modulus additionally requires actual
+fiber/matrix properties, fiber fraction, and laminate architecture.
+
+No extensometer method is inferred from a Bonded Strain Gage header.
+Course references contain no Poisson ratio; add a traceable reference for your actual material/layup.
+Carbon pairings and replicate groups require lab-note confirmation; specimen 3 may be an aborted/retest record.
+Geometry defaults: Carbon.xlsx!BONES, matched by name (not testing order). Carbon L gage is interpreted as jaw-to-jaw length.
+Madilin geometry (BONES row 18) is recorded in GEOMETRY_IN, but no matching raw test is available.
+Aluminum is identified as 6061-T6 in BONES!B2; comparison uses the assignment's nominal values.
+
+SPECIMEN 1: team13_Perp_Al
+Paired raw exports match; analyzed once. | Geometry source: Carbon.xlsx!BONES C4:F4 (aluminum_transverse); inches converted to mm. | Stress uses measured width*thickness area from workbook defaults; area_mm2 can be overridden. | Elastic interval PRELIMINARY: first 10-30% of peak load; review plot. | Sensor cutoff unreviewed: cleaned/analysis sensor curve limited to fit interval. | Fracture-derived quantities are PRELIMINARY until fracture_time_s is selected. | Sensor jump near t=56.1 s; possible fault/slip/debonding, not a confirmed event.
+
+SPECIMEN 2: team13_Long_Al
+Paired raw exports match; analyzed once. | Geometry source: Carbon.xlsx!BONES C3:F3 (aluminum_axial); inches converted to mm. | Stress uses measured width*thickness area from workbook defaults; area_mm2 can be overridden. | Elastic interval PRELIMINARY: first 10-30% of peak load; review plot. | Yield withheld: select elastic_time_s and a reliable sensor cutoff; require acceptable R². | Sensor cutoff unreviewed: cleaned/analysis sensor curve limited to fit interval. | Fracture-derived quantities are PRELIMINARY until fracture_time_s is selected. | Sensor jump near t=62.36 s; possible fault/slip/debonding, not a confirmed event.
+
+SPECIMEN 4: team13_Long_Carbon_Lewis_2
+Paired raw exports match; analyzed once. | Geometry source: Carbon.xlsx!BONES C7:F7 (Lewis); inches converted to mm. | Stress uses measured width*thickness area from workbook defaults; area_mm2 can be overridden. | Elastic interval PRELIMINARY: first 10-30% of peak load; review plot. | Yield withheld: select elastic_time_s and a reliable sensor cutoff; require acceptable R². | Sensor cutoff unreviewed: cleaned/analysis sensor curve limited to fit interval. | Fracture-derived quantities are PRELIMINARY until fracture_time_s is selected.
+
+SPECIMEN 6: team13_Perp_Carbon_Austen_2
+Paired raw exports match; analyzed once. | Geometry source: Carbon.xlsx!BONES C13:F13 (Austen); inches converted to mm. | Stress uses measured width*thickness area from workbook defaults; area_mm2 can be overridden. | Elastic interval PRELIMINARY: first 10-30% of peak load; review plot. | Insufficient nonconstant data for linear regression | Sensor cutoff unreviewed: cleaned/analysis sensor curve limited to fit interval. | Fracture-derived quantities are PRELIMINARY until fracture_time_s is selected.
+
+SPECIMEN 7: team13_Perp_Carbon_Chesterton
+Paired raw exports match; analyzed once. | Geometry source: Carbon.xlsx!BONES C10:F10 (Chesterton); inches converted to mm. | Stress uses measured width*thickness area from workbook defaults; area_mm2 can be overridden. | Elastic interval PRELIMINARY: first 10-30% of peak load; review plot. | Sensor cutoff unreviewed: cleaned/analysis sensor curve limited to fit interval. | Fracture-derived quantities are PRELIMINARY until fracture_time_s is selected.
+
+SPECIMEN 8: team13_Par_Carbon_Tolkin
+Paired raw exports match; analyzed once. | Geometry source: Carbon.xlsx!BONES C16:F16 (Tolkien); inches converted to mm. | Stress uses measured width*thickness area from workbook defaults; area_mm2 can be overridden. | Elastic interval PRELIMINARY: first 10-30% of peak load; review plot. | Yield withheld: select elastic_time_s and a reliable sensor cutoff; require acceptable R². | Sensor cutoff unreviewed: cleaned/analysis sensor curve limited to fit interval. | Fracture-derived quantities are PRELIMINARY until fracture_time_s is selected. | Sensor jump near t=107.38 s; possible fault/slip/debonding, not a confirmed event.
+
+ERRORS / SKIPPED SPECIMENS
+Specimen 3: No exports found for team13_tues_pm_3
+Specimen 5: No exports found for team13_tues_pm_5

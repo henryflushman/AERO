@@ -1,5 +1,6 @@
 """Intermediate-orbits helper toolkit for PolySpace coursework."""
 
+from .Atmosphere import ExponentialAtmosphere
 from .Constants import J2_EARTH, MU_EARTH_KM3_S2, OMEGA_EARTH_RAD_S, R_EARTH_KM
 from .OrbitalElements import (
     ClassicalOrbitalElements,
@@ -26,9 +27,15 @@ from .OrbitalFrames import (
     rot3,
     teme_to_ecef,
 )
+from .Perturbations import atmospheric_drag, relative_earth_velocity
+from .Spacecraft import OrbitingSpacecraft
 from .Propagators import (
     PropagationResult,
     j2_acceleration,
+    altitude_event,
+    altitude_crossing_event,
+    cowells_method,
+    enckes_method,
     propagate_custom,
     propagate_j2,
     propagate_two_body,
@@ -52,6 +59,10 @@ __all__ = [
     "R_EARTH_KM",
     "J2_EARTH",
     "OMEGA_EARTH_RAD_S",
+    "ExponentialAtmosphere",
+    "relative_earth_velocity",
+    "atmospheric_drag",
+    "OrbitingSpacecraft",
     "ClassicalOrbitalElements",
     "StateVector",
     "coe_to_rv",
@@ -82,6 +93,10 @@ __all__ = [
     "PropagationResult",
     "two_body_acceleration",
     "j2_acceleration",
+    "altitude_event",
+    "altitude_crossing_event",
+    "cowells_method",
+    "enckes_method",
     "propagate_custom",
     "propagate_two_body",
     "propagate_universal_anomaly",

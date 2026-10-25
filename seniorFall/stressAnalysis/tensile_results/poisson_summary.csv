@@ -1,0 +1,2 @@
+axial_specimen,transverse_specimen,poisson_ratio,common_stress_min_MPa,common_stress_max_MPa,axial_compliance_per_MPa,transverse_compliance_per_MPa,axial_R2,transverse_R2,status
+2,1,0.3718785601988971,37.79364981651743,99.09567557828584,1.3467442276660596e-05,-5.008253043406299e-06,0.9999815119137009,0.9999557390668925,PRELIMINARY separate-specimen estimate

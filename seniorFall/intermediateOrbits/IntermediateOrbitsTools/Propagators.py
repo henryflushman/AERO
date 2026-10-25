@@ -12,7 +12,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Iterable
+from typing import Any, Callable, Iterable
 
 import numpy as np
 from scipy.integrate import solve_ivp
@@ -48,7 +48,7 @@ class PropagationResult:
 
     times_s: np.ndarray
     states: np.ndarray
-    raw_solution: object
+    raw_solution: Any
 
     @property
     def positions_km(self) -> np.ndarray:
@@ -317,7 +317,7 @@ def universal_anomaly_state(
         correction = residual / derivative
         chi -= correction
 
-        if abs(correction) <= UNIVERSAL_SOLVER_TOLERANCE:
+        if abs(correction) <= UNIVERSAL_SOLVER_TOLERANCE * max(1.0, abs(chi)):
             break
     else:
         raise RuntimeError(
@@ -420,6 +420,309 @@ def propagate_universal_anomaly(
         states=states,
         raw_solution=metadata,
     )
+
+
+def altitude_event(
+    threshold_km: float,
+    *,
+    direction: str = "below",
+    radius_km: float = R_EARTH_KM,
+) -> Callable[[float, np.ndarray, np.ndarray], bool]:
+    """Build a stop event that triggers when altitude crosses ``threshold_km``.
+
+    ``direction`` is ``"below"`` (e.g. reentry) or ``"above"``. Altitude is
+    measured as ``|r| - radius_km`` (spherical Earth).
+    """
+    if direction not in ("below", "above"):
+        raise ValueError("direction must be 'below' or 'above'.")
+    threshold = float(threshold_km)
+
+    def event(t_s: float, r_km: np.ndarray, v_km_s: np.ndarray) -> bool:
+        altitude = float(np.linalg.norm(r_km)) - radius_km
+        return altitude <= threshold if direction == "below" else altitude >= threshold
+
+    return event
+
+
+def enckes_method(
+    initial_state,
+    t_span_s: tuple[float, float],
+    time_step_s: float,
+    mu_km3_s2: float = MU_EARTH_KM3_S2,
+    perturbations: Iterable[Callable[[float, np.ndarray, np.ndarray], np.ndarray]] | None = None,
+    *,
+    include_perturbations: bool = True,
+    rectification_threshold: float | None = 0.1,
+    events: Iterable[Callable[[float, np.ndarray, np.ndarray], bool]] | None = None,
+) -> PropagationResult:
+    """Propagate an orbit with fixed-step Encke updates.
+
+    Deviation is actual state minus the two-body reference state. Each
+    perturbation is a callable ``acceleration(t_s, r_km, v_km_s)`` that
+    returns an acceleration vector in km/s^2.
+
+    Parameters
+    ----------
+    initial_state : StateVector or six-value collection
+        Initial Cartesian state.
+    t_span_s : (float, float)
+        Initial and final propagation times in seconds.
+    time_step_s : float
+        Positive output and integration step, in seconds.
+    mu_km3_s2 : float, optional
+        Gravitational parameter for the reference orbit and Encke equations.
+    perturbations : iterable of callable, optional
+        Perturbing acceleration models. Each receives time in seconds,
+        position in km, and velocity in km/s, and returns acceleration in
+        km/s^2.
+    include_perturbations : bool, optional
+        Set false to skip all perturbation acceleration models.
+    rectification_threshold : float or None, optional
+        Reset the reference orbit when the deviation magnitude divided by
+        reference radius exceeds this value. Use None to disable rectification.
+    events : iterable of callable, optional
+        Stop events ``event(t_s, r_km, v_km_s) -> bool`` checked after each
+        step on the actual state (see :func:`altitude_event`). Propagation
+        ends at the first step where any returns True; that step is the last
+        row of the result and ``raw_solution["terminated_by_event"]`` is True.
+
+    Returns
+    -------
+    PropagationResult
+        Cartesian state history on the fixed time grid.
+    """
+    mu = float(mu_km3_s2)
+    stop_events = tuple(events) if events is not None else ()
+    if any(not callable(event) for event in stop_events):
+        raise TypeError("Every event must be callable.")
+    if not np.isfinite(mu) or mu <= 0.0:
+        raise ValueError("mu_km3_s2 must be finite and positive.")
+    if rectification_threshold is not None and (
+        not np.isfinite(rectification_threshold) or rectification_threshold <= 0.0
+    ):
+        raise ValueError("rectification_threshold must be positive or None.")
+
+    acceleration_models = (
+        tuple(perturbations) if perturbations is not None else ()
+    )
+    if any(not callable(model) for model in acceleration_models):
+        raise TypeError("Every perturbation must be callable.")
+    if not include_perturbations:
+        acceleration_models = ()
+
+    y0 = _state6(initial_state)
+    t0, tf = map(float, t_span_s)
+    times = _fixed_time_grid((t0, tf), time_step_s)
+    states = np.empty((len(times), 6), dtype=float)
+    reference = StateVector.from_vector6(y0)
+    reference_epoch_s = t0
+    delta_r = np.zeros(3, dtype=float)
+    delta_v = np.zeros(3, dtype=float)
+
+    def reference_at(time_s: float) -> StateVector:
+        return universal_anomaly_state(
+            reference,
+            time_s - reference_epoch_s,
+            mu_km3_s2=mu,
+        )
+
+    states[0] = y0
+    last_index = len(times) - 1
+    terminated = False
+    start_reference = reference_at(t0)
+    for index in range(1, len(times)):
+        step_start_s = times[index - 1]
+        step_end_s = times[index]
+        step_s = step_end_s - step_start_s
+        r_osc = start_reference.r_km
+        r_osc_mag = np.linalg.norm(r_osc)
+        actual_r = r_osc + delta_r
+        actual_v = start_reference.v_km_s + delta_v
+
+        q_value = float(
+            np.dot(delta_r, delta_r + 2.0 * r_osc) / r_osc_mag**2
+        )
+        if q_value <= -1.0:
+            raise RuntimeError(
+                "Encke deviation places the object at or through Earth's center."
+            )
+        f_q = q_value * (q_value**2 + 3.0 * q_value + 3.0) / (
+            1.0 + (1.0 + q_value) ** 1.5
+        )
+        delta_acceleration = -mu / r_osc_mag**3 * (
+            delta_r - f_q * r_osc
+        )
+
+        for acceleration_model in acceleration_models:
+            contribution = np.asarray(
+                acceleration_model(step_start_s, actual_r.copy(), actual_v.copy()),
+                dtype=float,
+            ).reshape(-1)
+            if contribution.size != 3 or not np.all(np.isfinite(contribution)):
+                raise ValueError(
+                    "Each perturbation must return three finite "
+                    "acceleration components in km/s^2."
+                )
+            delta_acceleration += contribution
+
+        delta_r = (
+            delta_r
+            + delta_v * step_s
+            + 0.5 * delta_acceleration * step_s**2
+        )
+        delta_v = delta_v + delta_acceleration * step_s
+        propagated_reference = reference_at(step_end_s)
+        actual_r = propagated_reference.r_km + delta_r
+        actual_v = propagated_reference.v_km_s + delta_v
+        states[index, :3] = actual_r
+        states[index, 3:] = actual_v
+        start_reference = propagated_reference
+
+        if any(event(step_end_s, actual_r, actual_v) for event in stop_events):
+            last_index = index
+            terminated = True
+            break
+
+        if (
+            rectification_threshold is not None
+            and np.linalg.norm(delta_r) / np.linalg.norm(propagated_reference.r_km)
+            >= rectification_threshold
+        ):
+            reference = StateVector(actual_r.copy(), actual_v.copy())
+            reference_epoch_s = step_end_s
+            start_reference = reference
+            delta_r = np.zeros(3, dtype=float)
+            delta_v = np.zeros(3, dtype=float)
+
+    metadata = {
+        "method": "encke",
+        "time_step_s": float(time_step_s),
+        "mu_km3_s2": mu,
+        "t_span_s": (t0, tf),
+        "perturbations_enabled": bool(acceleration_models),
+        "rectification_threshold": rectification_threshold,
+        "terminated_by_event": terminated,
+    }
+    return PropagationResult(
+        times_s=times[: last_index + 1],
+        states=states[: last_index + 1],
+        raw_solution=metadata,
+    )
+
+
+def altitude_crossing_event(
+    threshold_km: float,
+    *,
+    direction: str = "below",
+    radius_km: float = R_EARTH_KM,
+) -> Callable[[float, np.ndarray], float]:
+    """Build a terminal ``solve_ivp`` event for an altitude crossing.
+
+    For use with :func:`cowells_method`. ``direction`` is ``"below"`` or
+    ``"above"``. Altitude is ``|r| - radius_km`` (spherical Earth).
+    """
+    if direction not in ("below", "above"):
+        raise ValueError("direction must be 'below' or 'above'.")
+    threshold = float(threshold_km)
+
+    def event(t_s: float, y: np.ndarray, *args) -> float:
+        return float(np.linalg.norm(y[:3])) - radius_km - threshold
+
+    event.terminal = True
+    event.direction = -1.0 if direction == "below" else 1.0
+    return event
+
+
+def cowells_method(
+    initial_state,
+    t_span_s: tuple[float, float],
+    time_step_s: float,
+    mu_km3_s2: float = MU_EARTH_KM3_S2,
+    perturbations: Iterable[Callable[[float, np.ndarray, np.ndarray], np.ndarray]] | None = None,
+    *,
+    include_perturbations: bool = True,
+    events: Iterable[Callable] | None = None,
+    rtol: float = DEFAULT_RTOL,
+    atol: float = DEFAULT_ATOL,
+    method: str = "DOP853",
+) -> PropagationResult:
+    """Propagate an orbit by direct integration of Cowell's equation.
+
+    Integrates ``r_ddot = -mu / r^3 * r + a_perts`` in ECI. Each perturbation
+    is a callable ``acceleration(t_s, r_km, v_km_s)`` returning km/s^2, the
+    same interface used by :func:`enckes_method`.
+
+    Parameters
+    ----------
+    initial_state : StateVector or six-value collection
+        Initial Cartesian state.
+    t_span_s : (float, float)
+        Initial and final propagation times in seconds.
+    time_step_s : float
+        Positive output spacing in seconds. The integrator step is adaptive.
+    perturbations : iterable of callable, optional
+        Perturbing acceleration models.
+    include_perturbations : bool, optional
+        Set false to skip all perturbation models.
+    events : iterable of callable, optional
+        Native ``solve_ivp`` events ``event(t, y)``, e.g.
+        :func:`altitude_crossing_event`. Terminal events end propagation at
+        the root; the event state is appended as the last row.
+        ``raw_solution.status == 1`` indicates a terminal event fired.
+    rtol, atol, method : optional
+        ``solve_ivp`` settings.
+
+    Returns
+    -------
+    PropagationResult
+        State history on the output grid; ``raw_solution`` is the SciPy solution.
+    """
+    mu = float(mu_km3_s2)
+    if not np.isfinite(mu) or mu <= 0.0:
+        raise ValueError("mu_km3_s2 must be finite and positive.")
+
+    acceleration_models = tuple(perturbations) if perturbations is not None else ()
+    if any(not callable(model) for model in acceleration_models):
+        raise TypeError("Every perturbation must be callable.")
+    if not include_perturbations:
+        acceleration_models = ()
+
+    def rhs(t_s: float, y: np.ndarray) -> np.ndarray:
+        r = y[:3]
+        v = y[3:]
+        acceleration = -mu / np.linalg.norm(r) ** 3 * r
+        for model in acceleration_models:
+            acceleration = acceleration + np.asarray(
+                model(t_s, r.copy(), v.copy()), dtype=float
+            ).reshape(3)
+        return np.concatenate((v, acceleration))
+
+    y0 = _state6(initial_state)
+    t0, tf = map(float, t_span_s)
+    times = _fixed_time_grid((t0, tf), time_step_s)
+    event_list = list(events) if events is not None else None
+
+    result = propagate_custom(
+        y0,
+        (t0, tf),
+        rhs,
+        times_s=times,
+        rtol=rtol,
+        atol=atol,
+        method=method,
+        events=event_list,
+    )
+    solution = result.raw_solution
+    if solution.status == 1:
+        for t_event, y_event in zip(solution.t_events, solution.y_events):
+            if len(t_event):
+                result = PropagationResult(
+                    times_s=np.append(result.times_s, t_event[0]),
+                    states=np.vstack((result.states, y_event[0])),
+                    raw_solution=solution,
+                )
+                break
+    return result
 
 
 def propagate_custom(
@@ -594,6 +897,10 @@ __all__ = [
     "j2_rhs",
     "universal_anomaly_state",
     "propagate_universal_anomaly",
+    "altitude_event",
+    "altitude_crossing_event",
+    "cowells_method",
+    "enckes_method",
     "propagate_custom",
     "propagate_two_body",
     "propagate_j2",
