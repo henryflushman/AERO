@@ -1,0 +1,9 @@
+specimen,alloy,property,measured,reference,percent_difference,source
+1,6061-T6,E_GPa,,67.0,,Assignment nominal values; check applicability and result statuses
+1,6061-T6,yield_MPa,,240.0,,Assignment nominal values; check applicability and result statuses
+1,6061-T6,UTS_MPa,330.12126325760187,290.0,13.8349183646903,Assignment nominal values; check applicability and result statuses
+1,6061-T6,elongation_at_failure_pct,16.386005726556906,8.0,104.82507158196132,Assignment nominal values; check applicability and result statuses
+2,6061-T6,E_GPa,74.15412261972058,67.0,10.677794954806837,Assignment nominal values; check applicability and result statuses
+2,6061-T6,yield_MPa,,240.0,,Assignment nominal values; check applicability and result statuses
+2,6061-T6,UTS_MPa,376.17011286602195,290.0,29.71383202276619,Assignment nominal values; check applicability and result statuses
+2,6061-T6,elongation_at_failure_pct,14.433369879397986,8.0,80.41712349247483,Assignment nominal values; check applicability and result statuses

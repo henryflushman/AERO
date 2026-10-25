@@ -176,18 +176,26 @@ class CesiumScene:
         *,
         cesium_version: str = "latest",
         title: str | None = None,
+        ion_token: str | None = None,
+        ion_asset_id: int = 3812,
     ) -> Path:
         """Write a standalone HTML viewer with the CZML embedded directly.
 
         The browser needs internet access to load CesiumJS from jsDelivr, but the
         orbit data itself is embedded in the HTML file, so no local web server is
         required.
+
+        If ``ion_token`` is given, Natural Earth II is loaded from Cesium Ion
+        (``ion_asset_id``), falling back to the bundled copy on failure. The
+        token is embedded in the HTML file.
         """
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         title = title or self.name
         czml_json = json.dumps(self.czml).replace("</", "<\\/")
         cesium_root = f"https://cdn.jsdelivr.net/npm/cesium@{cesium_version}/Build/Cesium"
+        ion_token_js = json.dumps(ion_token or "").replace("</", "<\\/")
+        ion_asset_js = int(ion_asset_id)
 
         html = f'''<!DOCTYPE html>
 <html lang="en">
@@ -217,13 +225,27 @@ class CesiumScene:
     terrainProvider: new Cesium.EllipsoidTerrainProvider()
   }});
 
-  try {{
-    const naturalEarth = await Cesium.TileMapServiceImageryProvider.fromUrl(
-      Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII")
-    );
-    viewer.imageryLayers.addImageryProvider(naturalEarth);
-  }} catch (error) {{
-    console.warn("Natural Earth imagery could not be loaded:", error);
+  const ionToken = {ion_token_js};
+  let imageryLoaded = false;
+  if (ionToken) {{
+    try {{
+      Cesium.Ion.defaultAccessToken = ionToken;
+      const ionImagery = await Cesium.IonImageryProvider.fromAssetId({ion_asset_js});
+      viewer.imageryLayers.addImageryProvider(ionImagery);
+      imageryLoaded = true;
+    }} catch (error) {{
+      console.warn("Cesium Ion imagery could not be loaded:", error);
+    }}
+  }}
+  if (!imageryLoaded) {{
+    try {{
+      const naturalEarth = await Cesium.TileMapServiceImageryProvider.fromUrl(
+        Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII")
+      );
+      viewer.imageryLayers.addImageryProvider(naturalEarth);
+    }} catch (error) {{
+      console.warn("Natural Earth imagery could not be loaded:", error);
+    }}
   }}
 
   const czml = {czml_json};

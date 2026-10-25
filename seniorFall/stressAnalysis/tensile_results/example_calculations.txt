@@ -1,0 +1,86 @@
+
+SPECIMEN 1: team13_Perp_Al
+Geometry source: Carbon.xlsx!BONES C4:F4 (aluminum_transverse); inches converted to mm
+A0 = width*thickness = 12.6365*1.5748 = 19.9 mm^2; L0 = 67.056 mm
+A0 = 19.9 mm^2; Fmax = 6.5694 kN
+UTS = 1000*6.5694/19.9 = 330.121 MPa
+Extension at Fmax = 9.0819 mm
+epsilon_Instron at UTS = extension/L0 = 0.13543754473872582
+Elastic fit: 10.74 to 21.98 s; PRELIMINARY interval
+E = slope/1000 = None GPa; intercept = None MPa; R^2 = 0.9999616406103545
+Offset line sigma = E_MPa*(epsilon - 0.002) + intercept; intersection = (None, None MPa)
+Fracture: PRELIMINARY sudden-drop candidate; time = 219.82 s; stress = 266.58847287543824 MPa
+Instron elongation at fracture = 100*extension/L0 = 16.386005726556906 %
+Confirmed last pre-debond sensor strain = None
+
+SPECIMEN 2: team13_Long_Al
+Geometry source: Carbon.xlsx!BONES C3:F3 (aluminum_axial); inches converted to mm
+A0 = width*thickness = 11.5443*1.4859 = 17.1537 mm^2; L0 = 70.231 mm
+A0 = 17.1537 mm^2; Fmax = 6.4527 kN
+UTS = 1000*6.4527/17.1537 = 376.17 MPa
+Extension at Fmax = 8.3894 mm
+epsilon_Instron at UTS = extension/L0 = 0.11945437200096824
+Elastic fit: 9.3 to 16.9 s; PRELIMINARY interval
+E = slope/1000 = 74.15412261972058 GPa; intercept = 0.9941850829636086 MPa; R^2 = 0.9999848556403137
+Offset line sigma = E_MPa*(epsilon - 0.002) + intercept; intersection = (None, None MPa)
+Fracture: PRELIMINARY sudden-drop candidate; time = 202.811 s; stress = 314.7255549351113 MPa
+Instron elongation at fracture = 100*extension/L0 = 14.433369879397986 %
+Confirmed last pre-debond sensor strain = None
+
+SPECIMEN 4: team13_Long_Carbon_Lewis_2
+Geometry source: Carbon.xlsx!BONES C7:F7 (Lewis); inches converted to mm
+A0 = width*thickness = 18.1102*1.7018 = 30.8199 mm^2; L0 = 104.5718 mm
+A0 = 30.8199 mm^2; Fmax = 11.5844 kN
+UTS = 1000*11.5844/30.8199 = 375.874 MPa
+Extension at Fmax = 5.1106 mm
+epsilon_Instron at UTS = extension/L0 = 0.04887168433554744
+Elastic fit: 13.7 to 41.58 s; PRELIMINARY interval
+E = slope/1000 = 40.828934552067935 GPa; intercept = -3.340316925674704 MPa; R^2 = 0.998617519590442
+Offset line sigma = E_MPa*(epsilon - 0.002) + intercept; intersection = (None, None MPa)
+Fracture: PRELIMINARY sudden-drop candidate; time = 102.297 s; stress = 369.24473589375475 MPa
+Instron elongation at fracture = 100*extension/L0 = 4.888029086235487 %
+Confirmed last pre-debond sensor strain = None
+
+SPECIMEN 6: team13_Perp_Carbon_Austen_2
+Geometry source: Carbon.xlsx!BONES C13:F13 (Austen); inches converted to mm
+A0 = width*thickness = 18.008599999999998*1.6891 = 30.4183 mm^2; L0 = 104.88929999999999 mm
+A0 = 30.4183 mm^2; Fmax = 9.0911 kN
+UTS = 1000*9.0911/30.4183 = 298.869 MPa
+Extension at Fmax = 3.6598 mm
+epsilon_Instron at UTS = extension/L0 = 0.034892024257955775
+Elastic fit: 6.94 to 26.68 s; unavailable
+E = slope/1000 = None GPa; intercept = None MPa; R^2 = None
+Offset line sigma = E_MPa*(epsilon - 0.002) + intercept; intersection = (None, None MPa)
+Fracture: PRELIMINARY sudden-drop candidate; time = 73.3 s; stress = 297.6593755556621 MPa
+Instron elongation at fracture = 100*extension/L0 = 3.490251150498669 %
+Confirmed last pre-debond sensor strain = None
+
+SPECIMEN 7: team13_Perp_Carbon_Chesterton
+Geometry source: Carbon.xlsx!BONES C10:F10 (Chesterton); inches converted to mm
+A0 = width*thickness = 15.697199999999999*1.6001999999999998 = 25.1187 mm^2; L0 = 111.7346 mm
+A0 = 25.1187 mm^2; Fmax = 10.2038 kN
+UTS = 1000*10.2038/25.1187 = 406.224 MPa
+Extension at Fmax = 4.4899 mm
+epsilon_Instron at UTS = extension/L0 = 0.04018361367025075
+Elastic fit: 10.96 to 34.08 s; PRELIMINARY interval
+E = slope/1000 = None GPa; intercept = None MPa; R^2 = 0.9996761980430744
+Offset line sigma = E_MPa*(epsilon - 0.002) + intercept; intersection = (None, None MPa)
+Fracture: PRELIMINARY sudden-drop candidate; time = 89.88 s; stress = 405.2644618362643 MPa
+Instron elongation at fracture = 100*extension/L0 = 4.01925634494597 %
+Confirmed last pre-debond sensor strain = None
+
+SPECIMEN 8: team13_Par_Carbon_Tolkin
+Geometry source: Carbon.xlsx!BONES C16:F16 (Tolkien); inches converted to mm
+A0 = width*thickness = 17.284699999999997*1.6764 = 28.9761 mm^2; L0 = 105.7402 mm
+A0 = 28.9761 mm^2; Fmax = 13.1665 kN
+UTS = 1000*13.1665/28.9761 = 454.392 MPa
+Extension at Fmax = 5.7906 mm
+epsilon_Instron at UTS = extension/L0 = 0.05476252172778187
+Elastic fit: 17.86 to 47.92 s; PRELIMINARY interval
+E = slope/1000 = 36.535549362059626 GPa; intercept = 0.5024627211710957 MPa; R^2 = 0.9999243005546988
+Offset line sigma = E_MPa*(epsilon - 0.002) + intercept; intersection = (None, None MPa)
+Fracture: PRELIMINARY sudden-drop candidate; time = 115.89 s; stress = 449.45361860977323 MPa
+Instron elongation at fracture = 100*extension/L0 = 5.47672502983728 %
+Confirmed last pre-debond sensor strain = None
+
+Poisson pair (2, 1): nu = --5.00825e-06/1.34674e-05 = 0.371879; PRELIMINARY separate-specimen estimate
